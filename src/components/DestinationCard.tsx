@@ -2,7 +2,7 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
 import { ArrowRight } from 'lucide-react';
-import { Destination } from '@/services/mockData';
+import { Destination } from '@/services/supabaseService';
 
 interface DestinationCardProps {
   destination: Destination;
@@ -10,7 +10,7 @@ interface DestinationCardProps {
 
 const DestinationCard: React.FC<DestinationCardProps> = ({ destination }) => {
   return (
-    <Link to={`/destinations/${destination.destination_id}`} className="destination-card block">
+    <Link to={`/destinations/${destination.id}`} className="destination-card block">
       <div className="relative h-64">
         <img
           src={destination.image_url}

@@ -1,13 +1,16 @@
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { 
   getPackageById, 
   getDestinationById,
   getPlacesByIds,
   getGuidesByDestinationId,
-  Guide
-} from '@/services/mockData';
+  Guide,
+  Package,
+  Destination,
+  Place
+} from '@/services/supabaseService';
 import BackButton from '@/components/BackButton';
 import PlaceCard from '@/components/PlaceCard';
 import GuideCard from '@/components/GuideCard';
@@ -28,22 +31,69 @@ import {
   PopoverTrigger,
 } from "@/components/ui/popover";
 import { useAuth } from '@/contexts/AuthContext';
-import { toast } from '@/components/ui/sonner';
+import { toast } from '@/components/ui/use-toast';
 import { useNavigate } from 'react-router-dom';
 import Layout from '@/components/Layout';
 
 const PackageDetailPage: React.FC = () => {
   const { id } = useParams<{ id: string }>();
-  const packageData = id ? getPackageById(id) : undefined;
-  const destination = packageData ? getDestinationById(packageData.destination_id) : undefined;
-  const places = packageData ? getPlacesByIds(packageData.places_covered) : [];
-  const availableGuides = packageData && destination ? getGuidesByDestinationId(destination.destination_id) : [];
+  const [packageData, setPackageData] = useState<Package | null>(null);
+  const [destination, setDestination] = useState<Destination | null>(null);
+  const [places, setPlaces] = useState<Place[]>([]);
+  const [availableGuides, setAvailableGuides] = useState<Guide[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
   
   const { isAuthenticated } = useAuth();
   const navigate = useNavigate();
   
   const [selectedDate, setSelectedDate] = useState<Date | undefined>(undefined);
   const [selectedGuide, setSelectedGuide] = useState<Guide | null>(null);
+  
+  useEffect(() => {
+    const fetchData = async () => {
+      if (!id) return;
+      
+      setIsLoading(true);
+      
+      try {
+        // Fetch package data
+        const pkg = await getPackageById(id);
+        setPackageData(pkg);
+        
+        if (pkg) {
+          // Fetch destination
+          const dest = await getDestinationById(pkg.destination_id);
+          setDestination(dest);
+          
+          // Fetch places
+          const placesData = await getPlacesByIds(pkg.places_covered);
+          setPlaces(placesData);
+          
+          // Fetch guides
+          if (dest) {
+            const guidesData = await getGuidesByDestinationId(dest.id);
+            setAvailableGuides(guidesData);
+          }
+        }
+      } catch (error) {
+        console.error('Error fetching package details:', error);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+    
+    fetchData();
+  }, [id]);
+  
+  if (isLoading) {
+    return (
+      <Layout>
+        <div className="container mx-auto px-4 py-8">
+          <p className="text-center py-12 text-gray-500">Loading package details...</p>
+        </div>
+      </Layout>
+    );
+  }
   
   if (!packageData || !destination) {
     return (
@@ -63,7 +113,7 @@ const PackageDetailPage: React.FC = () => {
   };
   
   const handleGuideSelect = (guide: Guide) => {
-    if (selectedGuide && selectedGuide.guide_id === guide.guide_id) {
+    if (selectedGuide && selectedGuide.id === guide.id) {
       setSelectedGuide(null);
     } else {
       setSelectedGuide(guide);
@@ -73,14 +123,21 @@ const PackageDetailPage: React.FC = () => {
   const handleBooking = () => {
     if (!isAuthenticated) {
       // Store the package ID in session storage to redirect back after login
-      sessionStorage.setItem('pendingBookingPackage', packageData.package_id);
-      toast.info("Please log in to book this package");
+      sessionStorage.setItem('pendingBookingPackage', packageData.id);
+      toast({
+        title: "Authentication Required",
+        description: "Please log in to book this package"
+      });
       navigate('/login');
       return;
     }
     
     if (!selectedDate) {
-      toast.error("Please select a travel date");
+      toast({
+        title: "Date Required",
+        description: "Please select a travel date",
+        variant: "destructive"
+      });
       return;
     }
     
@@ -90,8 +147,8 @@ const PackageDetailPage: React.FC = () => {
     
     // Prepare booking data to pass to confirmation page
     const bookingData = {
-      package_id: packageData.package_id,
-      guide_id: selectedGuide?.guide_id || null,
+      package_id: packageData.id,
+      guide_id: selectedGuide?.id || undefined,
       travel_date: selectedDate.toISOString(),
       end_date: endDate.toISOString(),
       base_cost: packageData.cost,
@@ -272,27 +329,36 @@ const PackageDetailPage: React.FC = () => {
         <section className="mb-12">
           <h2 className="text-2xl font-bold mb-6">Places You'll Visit</h2>
           
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {places.map((place) => (
-              <PlaceCard key={place.place_id} place={place} />
-            ))}
-          </div>
+          {places.length > 0 ? (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+              {places.map((place) => (
+                <PlaceCard key={place.id} place={place} />
+              ))}
+            </div>
+          ) : (
+            <p className="text-gray-500 text-center py-4">Places information is not available.</p>
+          )}
         </section>
         
         {/* Available Guides */}
         <section className="mb-12">
           <h2 className="text-2xl font-bold mb-6">Available Guides</h2>
           
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            {availableGuides.map((guide) => (
-              <GuideCard 
-                key={guide.guide_id} 
-                guide={guide}
-                selected={selectedGuide?.guide_id === guide.guide_id}
-                onSelect={() => handleGuideSelect(guide)}
-              />
-            ))}
-          </div>
+          {availableGuides.length > 0 ? (
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              {availableGuides.map((guide) => (
+                <GuideCard 
+                  key={guide.id} 
+                  guide={guide}
+                  selected={selectedGuide?.id === guide.id}
+                  onSelect={() => handleGuideSelect(guide)}
+                />
+              ))}
+            </div>
+          ) : (
+            <p className="text-gray-500 text-center py-4">No guides are currently available for this destination.</p>
+          )}
+          
           <p className="text-sm text-gray-500 mt-4">
             <Calendar size={16} className="inline mr-1" />
             Guides availability is subject to change. Final confirmation will be made after booking.

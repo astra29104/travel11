@@ -1,7 +1,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { useSearchParams } from 'react-router-dom';
-import { destinations, getDestinationsByCategory } from '@/services/mockData';
+import { getDestinations, getDestinationsByCategory, Destination } from '@/services/supabaseService';
 import DestinationCard from '@/components/DestinationCard';
 import { Input } from '@/components/ui/input';
 import { Search } from 'lucide-react';
@@ -22,25 +22,46 @@ const DestinationsPage: React.FC = () => {
   
   const [searchTerm, setSearchTerm] = useState(initialSearch);
   const [selectedCategory, setSelectedCategory] = useState<string>('All');
-  const [filteredDestinations, setFilteredDestinations] = useState(destinations);
+  const [destinations, setDestinations] = useState<Destination[]>([]);
+  const [filteredDestinations, setFilteredDestinations] = useState<Destination[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
-    // Filter destinations based on both search term and category
-    let filtered = getDestinationsByCategory(selectedCategory);
+    const fetchDestinations = async () => {
+      setIsLoading(true);
+      const data = await getDestinations();
+      setDestinations(data);
+      setIsLoading(false);
+    };
+
+    fetchDestinations();
+  }, []);
+
+  useEffect(() => {
+    const filterDestinations = async () => {
+      setIsLoading(true);
+      
+      // First filter by category using the API
+      let filtered = await getDestinationsByCategory(selectedCategory);
+      
+      // Then filter locally by search term
+      if (searchTerm) {
+        filtered = filtered.filter(dest => 
+          dest.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+          dest.description.toLowerCase().includes(searchTerm.toLowerCase())
+        );
+      }
+      
+      setFilteredDestinations(filtered);
+      setIsLoading(false);
+    };
     
-    if (searchTerm) {
-      filtered = filtered.filter(dest => 
-        dest.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        dest.description.toLowerCase().includes(searchTerm.toLowerCase())
-      );
-    }
-    
-    setFilteredDestinations(filtered);
+    filterDestinations();
   }, [searchTerm, selectedCategory]);
 
   const handleSearch = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
-    // The filtering is already handled in the useEffect
+    // Filtering is already handled in the useEffect
   };
 
   return (
@@ -90,10 +111,14 @@ const DestinationsPage: React.FC = () => {
         </div>
         
         {/* Results */}
-        {filteredDestinations.length > 0 ? (
+        {isLoading ? (
+          <div className="text-center py-12">
+            <p className="text-gray-500">Loading destinations...</p>
+          </div>
+        ) : filteredDestinations.length > 0 ? (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
             {filteredDestinations.map((destination) => (
-              <DestinationCard key={destination.destination_id} destination={destination} />
+              <DestinationCard key={destination.id} destination={destination} />
             ))}
           </div>
         ) : (

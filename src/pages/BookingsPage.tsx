@@ -1,8 +1,8 @@
 
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
-import { getBookingsByUserId } from '@/services/mockData';
+import { getBookingsByUserId, Booking } from '@/services/supabaseService';
 import BookingCard from '@/components/BookingCard';
 import { Button } from '@/components/ui/button';
 import { Calendar, CalendarX } from 'lucide-react';
@@ -10,21 +10,31 @@ import Layout from '@/components/Layout';
 
 const BookingsPage: React.FC = () => {
   const { user, isAuthenticated } = useAuth();
+  const [bookings, setBookings] = useState<Booking[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
   
-  // Get bookings for the current user
-  const bookings = user ? getBookingsByUserId(user.user_id) : [];
-  
-  // Separate bookings into upcoming and past
-  const today = new Date();
-  const upcomingBookings = bookings.filter(booking => {
-    const lastTravelDate = new Date(booking.travel_dates[booking.travel_dates.length - 1]);
-    return lastTravelDate >= today;
-  });
-  
-  const pastBookings = bookings.filter(booking => {
-    const lastTravelDate = new Date(booking.travel_dates[booking.travel_dates.length - 1]);
-    return lastTravelDate < today;
-  });
+  useEffect(() => {
+    const fetchBookings = async () => {
+      if (!user) return;
+      
+      setIsLoading(true);
+      
+      try {
+        const bookingData = await getBookingsByUserId(user.id);
+        setBookings(bookingData);
+      } catch (error) {
+        console.error('Error fetching bookings:', error);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+    
+    if (isAuthenticated) {
+      fetchBookings();
+    } else {
+      setIsLoading(false);
+    }
+  }, [user, isAuthenticated]);
   
   if (!isAuthenticated) {
     return (
@@ -44,6 +54,28 @@ const BookingsPage: React.FC = () => {
     );
   }
 
+  if (isLoading) {
+    return (
+      <Layout>
+        <div className="container mx-auto px-4 py-8">
+          <p className="text-center py-12 text-gray-500">Loading your bookings...</p>
+        </div>
+      </Layout>
+    );
+  }
+
+  // Separate bookings into upcoming and past
+  const today = new Date();
+  const upcomingBookings = bookings.filter(booking => {
+    const lastTravelDate = new Date(booking.travel_dates[booking.travel_dates.length - 1]);
+    return lastTravelDate >= today;
+  });
+  
+  const pastBookings = bookings.filter(booking => {
+    const lastTravelDate = new Date(booking.travel_dates[booking.travel_dates.length - 1]);
+    return lastTravelDate < today;
+  });
+
   return (
     <Layout>
       <div className="container mx-auto px-4 py-8">
@@ -61,7 +93,7 @@ const BookingsPage: React.FC = () => {
           {upcomingBookings.length > 0 ? (
             <div className="grid gap-6 md:grid-cols-2">
               {upcomingBookings.map(booking => (
-                <BookingCard key={booking.booking_id} booking={booking} />
+                <BookingCard key={booking.id} booking={booking} />
               ))}
             </div>
           ) : (
@@ -84,7 +116,7 @@ const BookingsPage: React.FC = () => {
           {pastBookings.length > 0 ? (
             <div className="grid gap-6 md:grid-cols-2">
               {pastBookings.map(booking => (
-                <BookingCard key={booking.booking_id} booking={booking} />
+                <BookingCard key={booking.id} booking={booking} />
               ))}
             </div>
           ) : (

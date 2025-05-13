@@ -1,6 +1,6 @@
 
 import React from 'react';
-import { Guide } from '@/services/mockData';
+import { Guide } from '@/services/supabaseService';
 import { Star, Languages } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 

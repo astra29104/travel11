@@ -1,11 +1,14 @@
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { 
-  getDestinationById, 
+  getDestinationById,
   getPlacesByDestinationId,
-  getPackagesByDestinationId
-} from '@/services/mockData';
+  getPackagesByDestinationId,
+  Destination,
+  Place,
+  Package
+} from '@/services/supabaseService';
 import PlaceCard from '@/components/PlaceCard';
 import PackageCard from '@/components/PackageCard';
 import BackButton from '@/components/BackButton';
@@ -22,12 +25,53 @@ import Layout from '@/components/Layout';
 
 const DestinationDetailPage: React.FC = () => {
   const { id } = useParams<{ id: string }>();
-  const destination = id ? getDestinationById(id) : undefined;
-  const places = id ? getPlacesByDestinationId(id) : [];
-  const packages = id ? getPackagesByDestinationId(id) : [];
+  const [destination, setDestination] = useState<Destination | null>(null);
+  const [places, setPlaces] = useState<Place[]>([]);
+  const [packages, setPackages] = useState<Package[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
   
   const [currentPage, setCurrentPage] = useState(1);
   const placesPerPage = 3;
+  
+  useEffect(() => {
+    const fetchData = async () => {
+      if (!id) return;
+      
+      setIsLoading(true);
+      
+      try {
+        // Fetch destination data
+        const destinationData = await getDestinationById(id);
+        setDestination(destinationData);
+        
+        if (destinationData) {
+          // Fetch related places
+          const placesData = await getPlacesByDestinationId(id);
+          setPlaces(placesData);
+          
+          // Fetch packages
+          const packagesData = await getPackagesByDestinationId(id);
+          setPackages(packagesData);
+        }
+      } catch (error) {
+        console.error('Error fetching destination details:', error);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+    
+    fetchData();
+  }, [id]);
+  
+  if (isLoading) {
+    return (
+      <Layout>
+        <div className="container mx-auto px-4 py-8">
+          <p className="text-center py-12 text-gray-500">Loading destination details...</p>
+        </div>
+      </Layout>
+    );
+  }
   
   if (!destination) {
     return (
@@ -143,11 +187,15 @@ const DestinationDetailPage: React.FC = () => {
               )}
             </div>
             
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-              {currentPlaces.map((place) => (
-                <PlaceCard key={place.place_id} place={place} />
-              ))}
-            </div>
+            {places.length > 0 ? (
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                {currentPlaces.map((place) => (
+                  <PlaceCard key={place.id} place={place} />
+                ))}
+              </div>
+            ) : (
+              <p className="text-gray-500 text-center py-4">No places found for this destination.</p>
+            )}
             
             {/* Pagination for mobile */}
             {totalPages > 1 && (
@@ -181,19 +229,25 @@ const DestinationDetailPage: React.FC = () => {
           <section>
             <div className="flex items-center justify-between mb-6">
               <h2 className="text-2xl font-bold">Available Packages</h2>
-              <Link 
-                to={`/destinations/${destination.destination_id}/packages`} 
-                className="flex items-center text-primary hover:underline"
-              >
-                View All <ArrowUpRight size={16} className="ml-1" />
-              </Link>
+              {packages.length > 3 && (
+                <Link 
+                  to={`/destinations/${destination.id}/packages`} 
+                  className="flex items-center text-primary hover:underline"
+                >
+                  View All <ArrowUpRight size={16} className="ml-1" />
+                </Link>
+              )}
             </div>
             
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-              {packages.slice(0, 3).map((pkg) => (
-                <PackageCard key={pkg.package_id} package={pkg} />
-              ))}
-            </div>
+            {packages.length > 0 ? (
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+                {packages.slice(0, 3).map((pkg) => (
+                  <PackageCard key={pkg.id} package={pkg} />
+                ))}
+              </div>
+            ) : (
+              <p className="text-gray-500 text-center py-4">No packages available for this destination yet.</p>
+            )}
           </section>
         </div>
       </div>

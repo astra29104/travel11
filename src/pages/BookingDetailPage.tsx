@@ -1,7 +1,16 @@
 
-import React from 'react';
-import { useParams, Link } from 'react-router-dom';
-import { getBookingsByUserId, getPackageById, getGuideById, getDestinationById } from '@/services/mockData';
+import React, { useState, useEffect } from 'react';
+import { useParams, Link, useNavigate } from 'react-router-dom';
+import { 
+  getBookingById, 
+  getPackageById, 
+  getGuideById, 
+  getDestinationById, 
+  Booking, 
+  Package, 
+  Guide, 
+  Destination 
+} from '@/services/supabaseService';
 import { useAuth } from '@/contexts/AuthContext';
 import BackButton from '@/components/BackButton';
 import { Button } from '@/components/ui/button';
@@ -13,10 +22,54 @@ import Layout from '@/components/Layout';
 const BookingDetailPage: React.FC = () => {
   const { id } = useParams<{ id: string }>();
   const { user, isAuthenticated } = useAuth();
+  const navigate = useNavigate();
   
-  // Find the booking
-  const userBookings = user ? getBookingsByUserId(user.user_id) : [];
-  const booking = userBookings.find(booking => booking.booking_id === id);
+  const [booking, setBooking] = useState<Booking | null>(null);
+  const [packageDetails, setPackageDetails] = useState<Package | null>(null);
+  const [guide, setGuide] = useState<Guide | null>(null);
+  const [destination, setDestination] = useState<Destination | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
+  
+  useEffect(() => {
+    const fetchBookingDetails = async () => {
+      if (!id || !user) return;
+      
+      try {
+        // Get booking
+        const bookingData = await getBookingById(id, user.id);
+        if (!bookingData) {
+          return;
+        }
+        setBooking(bookingData);
+        
+        // Get package
+        const packageData = await getPackageById(bookingData.package_id);
+        if (packageData) {
+          setPackageDetails(packageData);
+          
+          // Get destination
+          const destinationData = await getDestinationById(packageData.destination_id);
+          setDestination(destinationData);
+        }
+        
+        // Get guide if exists
+        if (bookingData.guide_id) {
+          const guideData = await getGuideById(bookingData.guide_id);
+          setGuide(guideData);
+        }
+      } catch (error) {
+        console.error('Error fetching booking details:', error);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+    
+    if (isAuthenticated) {
+      fetchBookingDetails();
+    } else {
+      setIsLoading(false);
+    }
+  }, [id, user, isAuthenticated]);
   
   if (!isAuthenticated) {
     return (
@@ -36,7 +89,17 @@ const BookingDetailPage: React.FC = () => {
     );
   }
   
-  if (!booking) {
+  if (isLoading) {
+    return (
+      <Layout>
+        <div className="container mx-auto px-4 py-8">
+          <p className="text-center py-12 text-gray-500">Loading booking details...</p>
+        </div>
+      </Layout>
+    );
+  }
+  
+  if (!booking || !packageDetails || !destination) {
     return (
       <Layout>
         <div className="container mx-auto px-4 py-8">
@@ -48,27 +111,6 @@ const BookingDetailPage: React.FC = () => {
             </p>
             <Link to="/bookings">
               <Button>View All Bookings</Button>
-            </Link>
-          </div>
-        </div>
-      </Layout>
-    );
-  }
-  
-  // Get related data
-  const packageDetails = getPackageById(booking.package_id);
-  const guide = booking.guide_id ? getGuideById(booking.guide_id) : null;
-  const destination = packageDetails ? getDestinationById(packageDetails.destination_id) : null;
-  
-  if (!packageDetails || !destination) {
-    return (
-      <Layout>
-        <div className="container mx-auto px-4 py-8">
-          <BackButton label="Back to Bookings" />
-          <div className="text-center py-12">
-            <h1 className="text-2xl font-bold mb-4">Error Loading Booking Details</h1>
-            <Link to="/bookings">
-              <Button>Go Back</Button>
             </Link>
           </div>
         </div>
@@ -152,7 +194,7 @@ const BookingDetailPage: React.FC = () => {
                 <h3 className="font-semibold mb-2">Payment Details</h3>
                 <div className="flex justify-between text-gray-600">
                   <span>Booking ID</span>
-                  <span>{booking.booking_id}</span>
+                  <span>{booking.id}</span>
                 </div>
                 <div className="flex justify-between text-gray-600 mt-1">
                   <span>Booking Date</span>

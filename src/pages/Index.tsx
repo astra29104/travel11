@@ -1,9 +1,9 @@
 
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import HeroBanner from '@/components/HeroBanner';
 import SearchBar from '@/components/SearchBar';
-import { destinations, packages } from '@/services/mockData';
+import { getDestinations, getPackages, Destination, Package } from '@/services/supabaseService';
 import { Button } from '@/components/ui/button';
 import { ArrowRight } from 'lucide-react';
 import DestinationCard from '@/components/DestinationCard';
@@ -11,8 +11,30 @@ import PackageCard from '@/components/PackageCard';
 
 const Index: React.FC = () => {
   const navigate = useNavigate();
-  const featuredDestinations = destinations.slice(0, 3);
-  const topPackages = packages.slice(0, 4);
+  const [featuredDestinations, setFeaturedDestinations] = useState<Destination[]>([]);
+  const [topPackages, setTopPackages] = useState<Package[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  
+  useEffect(() => {
+    const fetchData = async () => {
+      setIsLoading(true);
+      
+      try {
+        // Get destinations and packages
+        const destinationsData = await getDestinations();
+        setFeaturedDestinations(destinationsData.slice(0, 3));
+        
+        const packagesData = await getPackages();
+        setTopPackages(packagesData.slice(0, 4));
+      } catch (error) {
+        console.error('Error fetching home page data:', error);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+    
+    fetchData();
+  }, []);
 
   return (
     <div className="min-h-screen">
@@ -42,11 +64,17 @@ const Index: React.FC = () => {
             </Link>
           </div>
           
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {featuredDestinations.map((destination) => (
-              <DestinationCard key={destination.destination_id} destination={destination} />
-            ))}
-          </div>
+          {isLoading ? (
+            <div className="text-center py-8">
+              <p className="text-gray-500">Loading destinations...</p>
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+              {featuredDestinations.map((destination) => (
+                <DestinationCard key={destination.id} destination={destination} />
+              ))}
+            </div>
+          )}
         </div>
       </section>
       
@@ -55,19 +83,21 @@ const Index: React.FC = () => {
         <div className="container mx-auto px-4">
           <h2 className="text-3xl font-bold mb-8">Popular Packages</h2>
           
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-            {topPackages.map((pkg) => {
-              const dest = destinations.find(d => d.destination_id === pkg.destination_id);
-              return (
+          {isLoading ? (
+            <div className="text-center py-8">
+              <p className="text-gray-500">Loading packages...</p>
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+              {topPackages.map((pkg) => (
                 <PackageCard
-                  key={pkg.package_id}
+                  key={pkg.id}
                   package={pkg}
                   showDestination={true}
-                  destinationName={dest?.name}
                 />
-              );
-            })}
-          </div>
+              ))}
+            </div>
+          )}
           
           <div className="mt-10 text-center">
             <Button size="lg" onClick={() => navigate('/destinations')}>

@@ -9,7 +9,237 @@ export type Json =
 export type Database = {
   public: {
     Tables: {
-      [_ in never]: never
+      bookings: {
+        Row: {
+          booking_status: string
+          created_at: string
+          guide_id: string | null
+          id: string
+          package_id: string
+          total_cost: number
+          travel_dates: string[]
+          user_id: string
+        }
+        Insert: {
+          booking_status: string
+          created_at?: string
+          guide_id?: string | null
+          id?: string
+          package_id: string
+          total_cost: number
+          travel_dates: string[]
+          user_id: string
+        }
+        Update: {
+          booking_status?: string
+          created_at?: string
+          guide_id?: string | null
+          id?: string
+          package_id?: string
+          total_cost?: number
+          travel_dates?: string[]
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "bookings_guide_id_fkey"
+            columns: ["guide_id"]
+            isOneToOne: false
+            referencedRelation: "guides"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "bookings_package_id_fkey"
+            columns: ["package_id"]
+            isOneToOne: false
+            referencedRelation: "packages"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      destinations: {
+        Row: {
+          category: string
+          created_at: string
+          description: string
+          highlights: string[]
+          id: string
+          image_url: string
+          name: string
+          popular_foods: string[]
+        }
+        Insert: {
+          category: string
+          created_at?: string
+          description: string
+          highlights: string[]
+          id?: string
+          image_url: string
+          name: string
+          popular_foods: string[]
+        }
+        Update: {
+          category?: string
+          created_at?: string
+          description?: string
+          highlights?: string[]
+          id?: string
+          image_url?: string
+          name?: string
+          popular_foods?: string[]
+        }
+        Relationships: []
+      }
+      guides: {
+        Row: {
+          contact: string
+          created_at: string
+          destination_id: string
+          experience: number
+          id: string
+          image_url: string
+          languages: string[]
+          name: string
+          price_per_day: number
+          rating: number
+        }
+        Insert: {
+          contact: string
+          created_at?: string
+          destination_id: string
+          experience: number
+          id?: string
+          image_url: string
+          languages: string[]
+          name: string
+          price_per_day: number
+          rating: number
+        }
+        Update: {
+          contact?: string
+          created_at?: string
+          destination_id?: string
+          experience?: number
+          id?: string
+          image_url?: string
+          languages?: string[]
+          name?: string
+          price_per_day?: number
+          rating?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "guides_destination_id_fkey"
+            columns: ["destination_id"]
+            isOneToOne: false
+            referencedRelation: "destinations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      packages: {
+        Row: {
+          cost: number
+          created_at: string
+          description: string
+          destination_id: string
+          duration_days: number
+          id: string
+          image_url: string
+          itinerary: string[]
+          places_covered: string[]
+          title: string
+        }
+        Insert: {
+          cost: number
+          created_at?: string
+          description: string
+          destination_id: string
+          duration_days: number
+          id?: string
+          image_url: string
+          itinerary: string[]
+          places_covered: string[]
+          title: string
+        }
+        Update: {
+          cost?: number
+          created_at?: string
+          description?: string
+          destination_id?: string
+          duration_days?: number
+          id?: string
+          image_url?: string
+          itinerary?: string[]
+          places_covered?: string[]
+          title?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "packages_destination_id_fkey"
+            columns: ["destination_id"]
+            isOneToOne: false
+            referencedRelation: "destinations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      places: {
+        Row: {
+          created_at: string
+          description: string
+          destination_id: string
+          id: string
+          image_url: string
+          name: string
+        }
+        Insert: {
+          created_at?: string
+          description: string
+          destination_id: string
+          id?: string
+          image_url: string
+          name: string
+        }
+        Update: {
+          created_at?: string
+          description?: string
+          destination_id?: string
+          id?: string
+          image_url?: string
+          name?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "places_destination_id_fkey"
+            columns: ["destination_id"]
+            isOneToOne: false
+            referencedRelation: "destinations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      profiles: {
+        Row: {
+          created_at: string
+          email: string
+          id: string
+          is_admin: boolean
+        }
+        Insert: {
+          created_at?: string
+          email: string
+          id: string
+          is_admin?: boolean
+        }
+        Update: {
+          created_at?: string
+          email?: string
+          id?: string
+          is_admin?: boolean
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never

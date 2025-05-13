@@ -6,23 +6,15 @@ import {
   getPackageById,
   getDestinationById, 
   getGuideById,
-  createBooking
-} from '@/services/mockData';
+  createBooking,
+  BookingData
+} from '@/services/supabaseService';
 import { useAuth } from '@/contexts/AuthContext';
-import { toast } from '@/components/ui/sonner';
+import { toast } from '@/components/ui/use-toast';
 import { Button } from '@/components/ui/button';
 import { Calendar, MapPin, User } from 'lucide-react';
 import BackButton from '@/components/BackButton';
 import Layout from '@/components/Layout';
-
-interface BookingData {
-  package_id: string;
-  guide_id: string | null;
-  travel_date: string;
-  end_date: string;
-  base_cost: number;
-  guide_cost: number;
-}
 
 const BookingConfirmPage: React.FC = () => {
   const location = useLocation();
@@ -30,23 +22,23 @@ const BookingConfirmPage: React.FC = () => {
   const { user } = useAuth();
   
   // Get booking data from location state or redirect
-  const bookingData = location.state?.bookingData as BookingData | undefined;
+  const bookingData = location.state?.bookingData;
   
   if (!bookingData || !user) {
     return <Navigate to="/" />;
   }
   
-  const packageDetails = getPackageById(bookingData.package_id);
-  const destination = packageDetails ? getDestinationById(packageDetails.destination_id) : undefined;
-  const guideDetails = bookingData.guide_id ? getGuideById(bookingData.guide_id) : null;
+  const packageDetails = location.state?.packageDetails;
+  const destination = location.state?.destinationName;
+  const guideDetails = location.state?.guideDetails;
   
   if (!packageDetails || !destination) {
     return <Navigate to="/" />;
   }
   
-  const totalCost = bookingData.base_cost + bookingData.guide_cost;
+  const totalCost = bookingData.base_cost + (bookingData.guide_cost || 0);
   
-  const handleConfirmBooking = () => {
+  const handleConfirmBooking = async () => {
     try {
       // Calculate travel dates array
       const startDate = new Date(bookingData.travel_date);
@@ -54,24 +46,35 @@ const BookingConfirmPage: React.FC = () => {
       const travelDates = [];
       
       for (let d = new Date(startDate); d <= endDate; d.setDate(d.getDate() + 1)) {
-        travelDates.push(new Date(d).toISOString());
+        travelDates.push(new Date(d).toISOString().split('T')[0]);
       }
       
-      // Create booking
-      const booking = createBooking({
-        user_id: user.user_id,
+      // Create booking in Supabase
+      const newBookingData: BookingData = {
+        user_id: user.id,
         package_id: bookingData.package_id,
-        guide_id: bookingData.guide_id || "",
+        guide_id: bookingData.guide_id,
         travel_dates: travelDates,
         booking_status: "Confirmed",
         total_cost: totalCost
-      });
+      };
       
-      toast.success("Booking confirmed successfully!");
-      navigate(`/bookings/${booking.booking_id}`);
+      const booking = await createBooking(newBookingData);
+      
+      if (booking) {
+        toast({
+          title: "Success",
+          description: "Booking confirmed successfully!"
+        });
+        navigate(`/bookings/${booking.id}`);
+      }
     } catch (error) {
       console.error("Booking error:", error);
-      toast.error("Failed to create booking. Please try again.");
+      toast({
+        title: "Error",
+        description: "Failed to create booking. Please try again.",
+        variant: "destructive"
+      });
     }
   };
 
@@ -101,7 +104,7 @@ const BookingConfirmPage: React.FC = () => {
               
               <div className="flex items-center text-gray-600 mb-4">
                 <MapPin size={18} className="mr-1 flex-shrink-0" />
-                <span>{destination.name}</span>
+                <span>{destination}</span>
               </div>
               
               <div className="flex items-center text-gray-600 mb-6">

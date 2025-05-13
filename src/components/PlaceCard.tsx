@@ -1,6 +1,6 @@
 
 import React from 'react';
-import { Place } from '@/services/mockData';
+import { Place } from '@/services/supabaseService';
 
 interface PlaceCardProps {
   place: Place;
