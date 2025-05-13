@@ -1,4 +1,3 @@
-
 // Mock data types
 export interface Destination {
   destination_id: string;
@@ -94,7 +93,7 @@ export const destinations: Destination[] = [
   {
     destination_id: "dest-005",
     name: "Darjeeling",
-    description: "Darjeeling is a town in India's West Bengal state, in the Himalayan foothills. Once a summer resort for the British Raj elite, it remains the terminus of the narrow-gauge Darjeeling Himalayan Railway, or "Toy Train," completed in 1881.",
+    description: "Darjeeling is a town in India's West Bengal state, in the Himalayan foothills. Once a summer resort for the British Raj elite, it remains the terminus of the narrow-gauge Darjeeling Himalayan Railway, or 'Toy Train,' completed in 1881.",
     image_url: "https://images.unsplash.com/photo-1544634076-a90160dfa229?q=80&w=1000",
     highlights: ["Tea gardens", "Tiger Hill sunrise", "Himalayan Mountaineering Institute", "Toy train ride"],
     category: "Mountains",
